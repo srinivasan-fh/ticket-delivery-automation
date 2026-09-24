@@ -41,13 +41,15 @@ def project_keys() -> List[str]:
     return keys
 
 
-def build_jql(keys: List[str], sprint_clause: str, only_mine: bool) -> str:
+def build_jql(keys: List[str], sprint_clause: str, only_mine: bool, exclude_subtasks: bool = False) -> str:
     parts = []
     if keys:
         parts.append("project in (" + ", ".join(f'"{k}"' for k in keys) + ")")
     parts.append(sprint_clause)
     if only_mine:
         parts.append("assignee = currentUser()")
+    if exclude_subtasks:
+        parts.append("issuetype not in subTaskIssueTypes()")
     return " AND ".join(parts) + " ORDER BY rank ASC"
 
 
@@ -174,7 +176,7 @@ class TicketDeliveryService:
             clause = await self._sprint_clause(which)
             if not clause:
                 return {"source": "live", "jql": None, "tickets": [], "execution_time_ms": (time.perf_counter() - start_time) * 1000}
-            jql = build_jql(project_keys(), clause, settings.DELIVERY_ONLY_MINE)
+            jql = build_jql(project_keys(), clause, settings.DELIVERY_ONLY_MINE, settings.DELIVERY_EXCLUDE_SUBTASKS)
             fields = ",".join(["summary", "status", "issuetype", "priority", "assignee", settings.DELIVERY_SPRINT_FIELD, settings.DELIVERY_STORY_POINTS_FIELD])
             # /search/jql is cursor-paginated - page through everything (capped as a backstop).
             issues: List[Dict[str, Any]] = []
@@ -204,7 +206,7 @@ class TicketDeliveryService:
     async def get_mcp_tickets(self, which: Literal["current", "next"]) -> Dict[str, Any]:
         start_time = time.perf_counter()
         clause = "sprint in futureSprints()" if which == "next" else "sprint in openSprints()"
-        jql = build_jql(project_keys(), clause, settings.DELIVERY_ONLY_MINE)
+        jql = build_jql(project_keys(), clause, settings.DELIVERY_ONLY_MINE, settings.DELIVERY_EXCLUDE_SUBTASKS)
         cwd = settings.DELIVERY_REPO_PATH if settings.DELIVERY_REPO_PATH and os.path.isdir(settings.DELIVERY_REPO_PATH) else os.path.expanduser("~")
 
         configured = [launcher.mcp_tool_prefix(s) for s in settings.CLAUDE_JIRA_MCP_SERVERS.split(",") if s.strip()]

@@ -51,7 +51,7 @@ def test_mcp_tickets_endpoint(client, monkeypatch, tmp_path):
     monkeypatch.setattr(settings, "CLAUDE_JIRA_MCP_SERVERS", "atlassian")
     body = client.post("/api/ticket-delivery/mcp-tickets?sprint=next").json()
     assert body["source"] == "claude-mcp" and body["tickets"][0]["key"] == "RNMS-7"
-    assert body["jql"] == 'project in ("RNMS") AND sprint in futureSprints() AND assignee = currentUser() ORDER BY rank ASC'
+    assert body["jql"] == 'project in ("RNMS") AND sprint in futureSprints() AND assignee = currentUser() AND issuetype not in subTaskIssueTypes() ORDER BY rank ASC'
     args = (tmp_path / "args.txt").read_text().splitlines()
     assert args[0] == "-p" and "sprint in futureSprints()" in "\n".join(args)
     allowed = args[args.index("--allowedTools") + 1].split(",")

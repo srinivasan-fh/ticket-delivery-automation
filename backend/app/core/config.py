@@ -64,6 +64,8 @@ class Settings(BaseSettings):
     # Board id pins the exact active / next sprint; without it openSprints()/futureSprints() are used.
     DELIVERY_JIRA_BOARD_ID: Optional[str] = None
     DELIVERY_ONLY_MINE: bool = True
+    # Hide sub-tasks (e.g. the "Development" sub-task under each story) - list parent tickets only.
+    DELIVERY_EXCLUDE_SUBTASKS: bool = True
     # customfield_10010 is this instance's real "Sprint" field (see JiraService.get_ticket).
     DELIVERY_SPRINT_FIELD: str = "customfield_10010"
     DELIVERY_STORY_POINTS_FIELD: str = "customfield_10016"

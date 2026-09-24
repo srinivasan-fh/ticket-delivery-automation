@@ -47,6 +47,8 @@ def test_build_jql():
     assert build_jql(["A", "B"], "sprint in openSprints()", True) == \
         'project in ("A", "B") AND sprint in openSprints() AND assignee = currentUser() ORDER BY rank ASC'
     assert build_jql([], "sprint = 1", False) == "sprint = 1 ORDER BY rank ASC"
+    assert build_jql(["RNMS"], "sprint in openSprints()", True, True) == \
+        'project in ("RNMS") AND sprint in openSprints() AND assignee = currentUser() AND issuetype not in subTaskIssueTypes() ORDER BY rank ASC'
 
 
 def test_project_keys_and_ticket_keys(monkeypatch):
