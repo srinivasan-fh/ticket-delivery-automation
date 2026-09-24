@@ -21,17 +21,32 @@ def test_parse_ticket_list_extracts_and_cleans():
         parse_ticket_list("[{bad json]")
 
 
-def _fake_claude(tmp_path, stdout, code=0):
+MCP_LIST = """Checking MCP server health...
+
+claude.ai Atlassian Rovo: https://mcp.atlassian.com/v1/mcp - ✓ Connected
+github: npx -y @modelcontextprotocol/server-github - ✓ Connected
+"""
+
+
+def _fake_claude(tmp_path, stdout, code=0, mcp_list=MCP_LIST):
     script = tmp_path / "claude"
     (tmp_path / "out.txt").write_text(stdout)
-    script.write_text(f'#!/bin/sh\nprintf "%s\\n" "$@" > "{tmp_path}/args.txt"\ncat "{tmp_path}/out.txt"\nexit {code}\n')
+    (tmp_path / "mcp.txt").write_text(mcp_list)
+    script.write_text(
+        '#!/bin/sh\n'
+        f'if [ "$1" = "mcp" ]; then cat "{tmp_path}/mcp.txt"; exit 0; fi\n'
+        f'printf "%s\\n" "$@" > "{tmp_path}/args.txt"\ncat "{tmp_path}/out.txt"\nexit {code}\n')
     script.chmod(0o755)
     return str(script)
 
 
+def _envelope(result, **extra):
+    return json.dumps({"type": "result", "is_error": False, "result": result, **extra})
+
+
 def test_mcp_tickets_endpoint(client, monkeypatch, tmp_path):
     reply = json.dumps([{"key": "RNMS-7", "summary": "Saved addresses", "status": "Dev In Progress", "url": "https://fh.atlassian.net/browse/RNMS-7"}])
-    monkeypatch.setattr(settings, "CLAUDE_BIN", _fake_claude(tmp_path, json.dumps({"type": "result", "is_error": False, "result": reply})))
+    monkeypatch.setattr(settings, "CLAUDE_BIN", _fake_claude(tmp_path, _envelope(reply)))
     monkeypatch.setattr(settings, "DELIVERY_JIRA_PROJECT_KEYS", "RNMS")
     monkeypatch.setattr(settings, "CLAUDE_JIRA_MCP_SERVERS", "atlassian")
     body = client.post("/api/ticket-delivery/mcp-tickets?sprint=next").json()
@@ -40,7 +55,39 @@ def test_mcp_tickets_endpoint(client, monkeypatch, tmp_path):
     args = (tmp_path / "args.txt").read_text().splitlines()
     assert args[0] == "-p" and "sprint in futureSprints()" in "\n".join(args)
     allowed = args[args.index("--allowedTools") + 1].split(",")
-    assert allowed == ["mcp__atlassian__searchJiraIssuesUsingJql", "mcp__atlassian__getAccessibleAtlassianResources", "mcp__atlassian__atlassianUserInfo"]
+    # detected from `claude mcp list` first, then the configured names - read-only tools only
+    assert allowed == [f"mcp__{server}__{tool}" for server in ("claude_ai_Atlassian_Rovo", "atlassian")
+                       for tool in ("searchJiraIssuesUsingJql", "getAccessibleAtlassianResources", "atlassianUserInfo")]
+    assert body["mcp_servers"] == ["claude_ai_Atlassian_Rovo", "atlassian"]
+
+
+def test_object_reply_and_real_empty_sprint(client, monkeypatch, tmp_path):
+    reply = json.dumps({"error": None, "tickets": [{"key": "RNMS-28293", "summary": "Create MS store", "status": "To Do"}]})
+    monkeypatch.setattr(settings, "CLAUDE_BIN", _fake_claude(tmp_path, _envelope("```json\n" + reply + "\n```")))
+    assert [t["key"] for t in client.post("/api/ticket-delivery/mcp-tickets").json()["tickets"]] == ["RNMS-28293"]
+    monkeypatch.setattr(settings, "CLAUDE_BIN", _fake_claude(tmp_path, _envelope('{"error": null, "tickets": []}')))
+    r = client.post("/api/ticket-delivery/mcp-tickets")
+    assert r.status_code == 200 and r.json()["tickets"] == []
+
+
+def test_blocked_jira_tool_is_an_error_not_an_empty_list(client, monkeypatch, tmp_path):
+    # The bug users hit: Claude was denied the Jira tool, replied "[]", and the page showed nothing.
+    denied = [{"tool_name": "mcp__claude_ai_Atlassian__searchJiraIssuesUsingJql", "tool_use_id": "t1", "tool_input": {}}]
+    monkeypatch.setattr(settings, "CLAUDE_BIN", _fake_claude(tmp_path, _envelope("[]", permission_denials=denied), mcp_list="No MCP servers configured."))
+    monkeypatch.setattr(settings, "CLAUDE_JIRA_MCP_SERVERS", "atlassian")
+    detail = client.post("/api/ticket-delivery/mcp-tickets").json()["detail"]
+    assert "not allowed to use mcp__claude_ai_Atlassian__searchJiraIssuesUsingJql" in detail
+    assert "Allowed MCP servers: atlassian" in detail and "CLAUDE_JIRA_MCP_SERVERS" in detail
+
+    monkeypatch.setattr(settings, "CLAUDE_BIN", _fake_claude(tmp_path, _envelope('{"error": "No Jira MCP tools are available", "tickets": []}')))
+    r = client.post("/api/ticket-delivery/mcp-tickets")
+    assert r.status_code == 502 and "No Jira MCP tools are available" in r.json()["detail"]
+
+
+def test_discover_and_prefix():
+    assert launcher.mcp_tool_prefix("claude.ai Atlassian Rovo") == "claude_ai_Atlassian_Rovo"
+    assert launcher.mcp_tool_prefix(" jira-cloud ") == "jira-cloud"
+    assert launcher.discover_jira_mcp_servers("/no/such/claude", "/") == []
 
 
 def test_mcp_tickets_errors(client, monkeypatch, tmp_path):

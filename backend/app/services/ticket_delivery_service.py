@@ -67,15 +67,7 @@ def repo_for(ticket_key: str) -> Dict[str, Optional[str]]:
     }
 
 
-def parse_ticket_list(text: str) -> List[Dict[str, Any]]:
-    """Pull the JSON array out of Claude's reply and keep only well-formed tickets."""
-    start, end = text.find("["), text.rfind("]")
-    if start == -1 or end < start:
-        raise DeliveryError(f"Claude Code did not return a ticket list: {text[:200]}", 502)
-    try:
-        items = json.loads(text[start:end + 1])
-    except ValueError:
-        raise DeliveryError("Claude Code returned a ticket list that is not valid JSON", 502)
+def _clean_tickets(items: Any) -> List[Dict[str, Any]]:
     tickets = []
     for item in items if isinstance(items, list) else []:
         if not isinstance(item, dict) or not TICKET_KEY_RE.match(str(item.get("key", ""))):
@@ -94,6 +86,32 @@ def parse_ticket_list(text: str) -> List[Dict[str, Any]]:
             "url": url if url.startswith("https://") else None,
         })
     return tickets
+
+
+def parse_ticket_reply(text: str) -> "tuple[List[Dict[str, Any]], Optional[str]]":
+    """Parse Claude's reply: {"error": ..., "tickets": [...]} (or a bare [...] array).
+    Returns (tickets, error_reported_by_claude)."""
+    obj_start, obj_end = text.find("{"), text.rfind("}")
+    arr_start = text.find("[")
+    if obj_start != -1 and obj_end > obj_start and (arr_start == -1 or obj_start < arr_start):
+        try:
+            data = json.loads(text[obj_start:obj_end + 1])
+        except ValueError:
+            data = None
+        if isinstance(data, dict) and "tickets" in data:
+            error = data.get("error")
+            return _clean_tickets(data.get("tickets")), (str(error) if error else None)
+    arr_end = text.rfind("]")
+    if arr_start == -1 or arr_end < arr_start:
+        raise DeliveryError(f"Claude Code did not return a ticket list: {text[:200]}", 502)
+    try:
+        return _clean_tickets(json.loads(text[arr_start:arr_end + 1])), None
+    except ValueError:
+        raise DeliveryError("Claude Code returned a ticket list that is not valid JSON", 502)
+
+
+def parse_ticket_list(text: str) -> List[Dict[str, Any]]:
+    return parse_ticket_reply(text)[0]
 
 
 def require_ticket_key(key: str) -> str:
@@ -187,19 +205,23 @@ class TicketDeliveryService:
         start_time = time.perf_counter()
         clause = "sprint in futureSprints()" if which == "next" else "sprint in openSprints()"
         jql = build_jql(project_keys(), clause, settings.DELIVERY_ONLY_MINE)
-        servers = [s.strip() for s in settings.CLAUDE_JIRA_MCP_SERVERS.split(",") if s.strip()]
+        cwd = settings.DELIVERY_REPO_PATH if settings.DELIVERY_REPO_PATH and os.path.isdir(settings.DELIVERY_REPO_PATH) else os.path.expanduser("~")
+
+        configured = [launcher.mcp_tool_prefix(s) for s in settings.CLAUDE_JIRA_MCP_SERVERS.split(",") if s.strip()]
+        discovered = await asyncio.to_thread(launcher.discover_jira_mcp_servers, settings.CLAUDE_BIN, cwd)
+        servers = list(dict.fromkeys(discovered + configured))
         read_only_tools = ["searchJiraIssuesUsingJql", "getAccessibleAtlassianResources", "atlassianUserInfo"]
         allowed = [f"mcp__{server}__{tool}" for server in servers for tool in read_only_tools]
         prompt = "\n".join([
-            "Use your Atlassian (Jira) MCP tools only - searchJiraIssuesUsingJql, and getAccessibleAtlassianResources if you need the cloudId.",
-            f"Run this JQL: {jql}",
+            "Use your Atlassian (Jira) MCP tools only - searchJiraIssuesUsingJql, and getAccessibleAtlassianResources first if you need the cloudId.",
+            f"Run this JQL and return every result (page through if needed): {jql}",
             f"Request the fields summary, status, issuetype, priority, assignee, {settings.DELIVERY_SPRINT_FIELD}, {settings.DELIVERY_STORY_POINTS_FIELD}.",
-            "Reply with ONLY a JSON array and nothing else. One object per issue:",
-            '{"key": "...", "summary": "...", "status": "...", "type": "...", "priority": "...", "assignee": "...", '
-            '"story_points": number or null, "sprint": "...", "url": "https://<site>/browse/<key>"}',
-            "If there are no issues, reply [].",
+            "Reply with ONLY this JSON object and nothing else:",
+            '{"error": null, "tickets": [{"key": "...", "summary": "...", "status": "...", "type": "...", "priority": "...", '
+            '"assignee": "...", "story_points": number or null, "sprint": "...", "url": "https://<site>/browse/<key>"}]}',
+            'If you could not run the search (tool missing, not allowed, not signed in), reply {"error": "<why>", "tickets": []}.',
+            "Only use an empty tickets list with a null error when the search really returned no issues.",
         ])
-        cwd = settings.DELIVERY_REPO_PATH if settings.DELIVERY_REPO_PATH and os.path.isdir(settings.DELIVERY_REPO_PATH) else os.path.expanduser("~")
         try:
             envelope = await asyncio.to_thread(
                 launcher.run_claude_print, settings.CLAUDE_BIN, prompt, allowed, cwd, settings.CLAUDE_MCP_TIMEOUT_SECONDS)
@@ -207,8 +229,15 @@ class TicketDeliveryService:
             raise DeliveryError(str(exc), 502)
         if envelope.get("is_error"):
             raise DeliveryError(f"Claude Code reported an error: {str(envelope.get('result'))[:300]}", 502)
-        tickets = parse_ticket_list(str(envelope.get("result") or ""))
-        return {"source": "claude-mcp", "jql": jql, "tickets": tickets, "execution_time_ms": (time.perf_counter() - start_time) * 1000}
+        reply = str(envelope.get("result") or "")
+        tickets, claude_error = parse_ticket_reply(reply)
+        denied = sorted({str(d.get("tool_name")) for d in (envelope.get("permission_denials") or []) if isinstance(d, dict)})
+        if not tickets and (denied or claude_error):
+            hint = f"Allowed MCP servers: {', '.join(servers) or 'none found'}. Run `claude mcp list` and set CLAUDE_JIRA_MCP_SERVERS in backend/.env to your Atlassian server's name."
+            what = f"it was not allowed to use {', '.join(denied)}" if denied else claude_error
+            raise DeliveryError(f"Claude Code could not read Jira: {what}. {hint}", 502)
+        return {"source": "claude-mcp", "jql": jql, "tickets": tickets, "mcp_servers": servers,
+                "execution_time_ms": (time.perf_counter() - start_time) * 1000}
 
     # ---------- checklists ----------
     def get_checks(self, keys: List[str]) -> Dict[str, Any]:
