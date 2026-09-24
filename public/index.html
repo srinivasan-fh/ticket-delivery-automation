@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="tda-token" content="__TDA_TOKEN__" />
+  <title>Ticket Delivery</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <h1>Ticket Delivery</h1>
+      <p class="sub">Jira sprint → Claude → Dev Automation Portal</p>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-sprint="current" aria-selected="true">Current sprint</button>
+      <button role="tab" data-sprint="next" aria-selected="false">Next sprint</button>
+    </nav>
+    <div class="top-actions">
+      <button id="refresh" class="btn">Refresh</button>
+      <button id="open-access" class="btn">Setup checklist</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="summary" class="summary"></div>
+    <div id="tickets" class="tickets" aria-live="polite"></div>
+  </main>
+
+  <aside id="access" class="drawer" hidden>
+    <div class="drawer-head">
+      <h2>Setup checklist</h2>
+      <button id="close-access" class="btn ghost" aria-label="Close">✕</button>
+    </div>
+    <section>
+      <h3>Live access checks</h3>
+      <ul id="health" class="health"></ul>
+    </section>
+    <section id="access-list"></section>
+  </aside>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
