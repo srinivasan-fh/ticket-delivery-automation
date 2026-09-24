@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Literal, Optional
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.clients.jira_client import JiraClient
+from app.clients.github_client import GithubClient
 from app.core import launcher
 from app.core.delivery_checklist import ACCESS_CHECKLIST
 from app.core.delivery_stages import STAGES, build_prompt, get_stage
@@ -239,11 +240,28 @@ class TicketDeliveryService:
             return f.read()
 
     # ---------- setup / config ----------
-    def health(self) -> Dict[str, Dict[str, Any]]:
+    async def _jira_check(self) -> Dict[str, Any]:
+        if not settings.jira_configured:
+            return {"ok": False, "detail": "Simulated - set JIRA_BASE_URL, JIRA_EMAIL and JIRA_API_TOKEN in Settings"}
+        status_code, data, error, _ = await self.client.get_myself()
+        if status_code == 200 and isinstance(data, dict):
+            return {"ok": True, "detail": f"Live - signed in as {data.get('displayName') or data.get('emailAddress')}"}
+        return {"ok": False, "detail": f"Jira credentials set but not working: {(error or f'HTTP {status_code}')[:200]}"}
+
+    async def _github_check(self) -> Dict[str, Any]:
+        if not settings.github_configured:
+            return {"ok": False, "detail": "Simulated - set GITHUB_TOKEN in Settings"}
+        status_code, data, error, _ = await GithubClient().get_authenticated_user()
+        if status_code == 200 and isinstance(data, dict):
+            return {"ok": True, "detail": f"Live - signed in as {data.get('login')}"}
+        return {"ok": False, "detail": f"GITHUB_TOKEN set but not working: {(error or f'HTTP {status_code}')[:200]}"}
+
+    async def health(self) -> Dict[str, Dict[str, Any]]:
         checks: Dict[str, Dict[str, Any]] = {
-            "jira": {"ok": settings.jira_configured, "detail": "Live" if settings.jira_configured else "Simulated - set Jira in Settings"},
-            "github": {"ok": settings.github_configured, "detail": "Live" if settings.github_configured else "Simulated - set GITHUB_TOKEN in Settings"},
-            "cliq": {"ok": settings.zoho_cliq_configured, "detail": "Live" if settings.zoho_cliq_configured else "Simulated - set Zoho OAuth in .env"},
+            "jira": await self._jira_check(),
+            "github": await self._github_check(),
+            "cliq": {"ok": settings.zoho_cliq_configured,
+                     "detail": "Configured (Zoho OAuth set)" if settings.zoho_cliq_configured else "Simulated - set ZOHO_CLIENT_ID / SECRET / REFRESH_TOKEN in .env"},
             "claude": launcher.run_version(settings.CLAUDE_BIN),
         }
         try:

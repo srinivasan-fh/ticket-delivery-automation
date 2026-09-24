@@ -117,6 +117,9 @@ class JiraClient(BaseAPIClient):
         # customer request, e.g. "Waiting Product Owner Approval" style statuses.
         return await self.get(f"/rest/servicedeskapi/request/{ticket_key}/approval")
 
+    async def get_myself(self) -> Tuple[int, Any, Optional[str], float]:
+        return await self._request("GET", "/rest/api/3/myself", retries=0)
+
     async def get_board_sprints(self, board_id: str, state: str) -> Tuple[int, Any, Optional[str], float]:
         # Agile API - sprints on a board in a given state ("active" / "future"), oldest first.
         return await self.get(f"/rest/agile/1.0/board/{board_id}/sprint", params={"state": state})
