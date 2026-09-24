@@ -36,6 +36,7 @@ def test_build_prompt():
     p = build_prompt(get_stage("develop"), ticket, "rn-ticket-delivery")
     assert p.startswith("Use the rn-ticket-delivery skill for Jira ticket RNMS-1. Stage: Develop + Unit Tests.")
     assert "- [ ] Unit tests written" in p
+    assert "First read RNMS-1 from Jira with the Atlassian MCP" in p
     assert "Points: -" in p and "Link: https://j/browse/RNMS-1" in p
     assert p.endswith("Description:\nAC1\n")
     p2 = build_prompt(get_stage("design"), {**ticket, "url": None, "description": "No description"}, "s")

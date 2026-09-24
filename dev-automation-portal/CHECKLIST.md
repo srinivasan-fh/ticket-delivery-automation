@@ -18,7 +18,7 @@ The **Ticket Delivery** page (JIRA Integration → Ticket Delivery) shows these 
 - [ ] JIRA_BASE_URL, JIRA_EMAIL and JIRA_API_TOKEN set in Settings
 - [ ] DELIVERY_JIRA_PROJECT_KEYS (and ideally DELIVERY_JIRA_BOARD_ID) set
 - [ ] You can see the current and next sprint on the board
-- [ ] Atlassian MCP connected in Claude Code so the skill can comment and attach evidence
+- [ ] Atlassian MCP connected in Claude Code (stages read the full ticket and add evidence through it)
 
 ### Claude (code and everything else)
 

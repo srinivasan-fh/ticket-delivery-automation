@@ -98,8 +98,24 @@ def get_stage(stage_id: str) -> Optional[Dict[str, Any]]:
 
 def build_prompt(stage: Dict[str, Any], ticket: Dict[str, Any], skill: str) -> str:
     points = ticket.get("story_points")
+    if not ticket.get("summary"):
+        # Portal couldn't fetch the ticket - Claude reads it through the Atlassian MCP instead.
+        return "\n".join([
+            f"Use the {skill} skill for Jira ticket {ticket['key']}. Stage: {stage['label']}.",
+            "",
+            f"Read {ticket['key']} from Jira with the Atlassian MCP first: description, acceptance criteria,",
+            "comments, attachments and linked issues.",
+            "",
+            *stage["task"],
+            "",
+            "Before you finish, confirm each item of this checklist (done / not done / n/a):",
+            *[f"- [ ] {c['text']}" for c in stage["checklist"]],
+        ]) + "\n"
     lines = [
         f"Use the {skill} skill for Jira ticket {ticket['key']}. Stage: {stage['label']}.",
+        "",
+        f"First read {ticket['key']} from Jira with the Atlassian MCP: description, acceptance criteria,",
+        "comments, attachments and linked issues. The brief at the end is only a summary.",
         "",
         *stage["task"],
         "",
