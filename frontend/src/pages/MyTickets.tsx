@@ -26,9 +26,17 @@ type Sprint = 'current' | 'next';
 // Tickets are kept in this browser for reference - syncing again replaces them.
 const STORAGE_KEY = 'ticketDelivery.jiraTickets.v1';
 
+// Sub-tasks (e.g. the "Development" sub-task under each story) are never listed - this also
+// cleans lists saved before the Jira search excluded them.
+const isSubtask = (t: Ticket) => /sub-?task/i.test(t.type || '');
+
 const loadSaved = (): Partial<Record<Sprint, SavedList>> => {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {};
+    const all: Partial<Record<Sprint, SavedList>> = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {};
+    for (const list of Object.values(all)) {
+      if (list?.tickets) list.tickets = list.tickets.filter((t) => !isSubtask(t));
+    }
+    return all;
   } catch {
     return {};
   }
@@ -45,7 +53,11 @@ const save = (all: Partial<Record<Sprint, SavedList>>) => {
 export const MyTickets: React.FC = () => {
   const { addNotification } = useStore();
   const [sprint, setSprint] = useState<Sprint>('current');
-  const [saved, setSaved] = useState(loadSaved);
+  const [saved, setSaved] = useState(() => {
+    const all = loadSaved();
+    save(all); // persist the cleaned list
+    return all;
+  });
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stages, setStages] = useState<StageOption[]>([]);
@@ -62,7 +74,8 @@ export const MyTickets: React.FC = () => {
     setError(null);
     try {
       const res = await ticketDeliveryApi.getMcpTickets(sprint);
-      const next = { ...saved, [sprint]: { synced_at: new Date().toISOString(), jql: res.jql, tickets: res.tickets } };
+      const tickets = (res.tickets as Ticket[]).filter((t) => !isSubtask(t));
+      const next = { ...saved, [sprint]: { synced_at: new Date().toISOString(), jql: res.jql, tickets } };
       setSaved(next);
       save(next);
     } catch (err: any) {

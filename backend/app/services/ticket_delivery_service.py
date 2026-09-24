@@ -74,6 +74,9 @@ def _clean_tickets(items: Any) -> List[Dict[str, Any]]:
     for item in items if isinstance(items, list) else []:
         if not isinstance(item, dict) or not TICKET_KEY_RE.match(str(item.get("key", ""))):
             continue
+        if settings.DELIVERY_EXCLUDE_SUBTASKS and (
+                item.get("subtask") is True or re.search(r"sub-?task", str(item.get("type") or ""), re.IGNORECASE)):
+            continue  # belt and braces - the JQL already excludes sub-tasks
         points = item.get("story_points")
         url = str(item.get("url") or "")
         tickets.append({
@@ -219,7 +222,9 @@ class TicketDeliveryService:
             f"Request the fields summary, status, issuetype, priority, assignee, {settings.DELIVERY_SPRINT_FIELD}, {settings.DELIVERY_STORY_POINTS_FIELD}.",
             "Reply with ONLY this JSON object and nothing else:",
             '{"error": null, "tickets": [{"key": "...", "summary": "...", "status": "...", "type": "...", "priority": "...", '
-            '"assignee": "...", "story_points": number or null, "sprint": "...", "url": "https://<site>/browse/<key>"}]}',
+            '"assignee": "...", "story_points": number or null, "sprint": "...", "subtask": true or false (issuetype.subtask), '
+            '"url": "https://<site>/browse/<key>"}]}',
+            "Use the JQL exactly as given - do not drop any of its conditions.",
             'If you could not run the search (tool missing, not allowed, not signed in), reply {"error": "<why>", "tickets": []}.',
             "Only use an empty tickets list with a null error when the search really returned no issues.",
         ])
