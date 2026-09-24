@@ -49,7 +49,7 @@ def test_live_sprint_tickets_with_board(client, monkeypatch):
     monkeypatch.setattr(JiraClient, "get_board_sprints", sprints)
     monkeypatch.setattr(JiraClient, "search_issues", search)
     body = client.get("/api/ticket-delivery/tickets?sprint=next").json()
-    assert body["jql"] == 'project in ("RNMS") AND sprint = 20 AND assignee = currentUser() ORDER BY rank ASC'
+    assert body["jql"] == 'project in ("RNMS") AND sprint = 20 AND assignee = currentUser() AND issuetype not in subTaskIssueTypes() ORDER BY rank ASC'
     assert "customfield_10010" in seen["fields"]
     first, second = body["tickets"]
     assert first["sprint"] == "CodeRed-Sprint 9" and first["story_points"] == 3
