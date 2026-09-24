@@ -104,6 +104,26 @@ export const githubApi = {
     apiClient.post('/github/pr/delete-branch', { owner, repo, branch }).then(r => r.data),
 };
 
+export type DeliveryMode = 'launch' | 'run' | 'prompt';
+
+export const ticketDeliveryApi = {
+  getConfig: () => apiClient.get('/ticket-delivery/config').then(r => r.data),
+  getHealth: () => apiClient.get('/ticket-delivery/health').then(r => r.data),
+  getTickets: (sprint: 'current' | 'next') =>
+    apiClient.get('/ticket-delivery/tickets', { params: { sprint }, timeout: 60000 }).then(r => r.data),
+  getChecks: (keys: string[]) =>
+    apiClient.get('/ticket-delivery/checks', { params: { keys: keys.join(',') } }).then(r => r.data),
+  setCheck: (payload: { ticket_key: string; stage: string; item_id: string; done: boolean }) =>
+    apiClient.put('/ticket-delivery/checks', payload).then(r => r.data),
+  setAccess: (payload: { item_id: string; done: boolean }) =>
+    apiClient.put('/ticket-delivery/access', payload).then(r => r.data),
+  getRepo: (ticketKey: string) => apiClient.get(`/ticket-delivery/tickets/${ticketKey}/repo`).then(r => r.data),
+  startStage: (ticketKey: string, stageId: string, mode: DeliveryMode) =>
+    apiClient.post(`/ticket-delivery/tickets/${ticketKey}/stages/${stageId}`, { mode }, { timeout: 30000 }).then(r => r.data),
+  getStageOutput: (ticketKey: string, stageId: string) =>
+    apiClient.get(`/ticket-delivery/tickets/${ticketKey}/stages/${stageId}/output`).then(r => r.data),
+};
+
 export const devopsApi = {
   getDashboard: () => apiClient.get('/devops/dashboard').then(r => r.data),
   getJenkinsTree: (path?: string) =>

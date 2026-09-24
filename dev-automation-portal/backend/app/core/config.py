@@ -47,6 +47,30 @@ class Settings(BaseSettings):
     # Contacts list) since it rarely changes and isn't a Cliq-messaging identity.
     PR_REVIEWER_GITHUB_LOGIN: str = "sangesh-t2s"
 
+    # Ticket Delivery - current/next sprint tickets handed off to Claude per delivery stage.
+    # Comma-separated project keys to scope the sprint query (blank = every project on the sprint).
+    DELIVERY_JIRA_PROJECT_KEYS: str = ""
+    # Board id pins the exact active / next sprint; without it openSprints()/futureSprints() are used.
+    DELIVERY_JIRA_BOARD_ID: Optional[str] = None
+    DELIVERY_ONLY_MINE: bool = True
+    # customfield_10010 is this instance's real "Sprint" field (see JiraService.get_ticket).
+    DELIVERY_SPRINT_FIELD: str = "customfield_10010"
+    DELIVERY_STORY_POINTS_FIELD: str = "customfield_10016"
+    CLAUDE_BIN: str = "claude"
+    CLAUDE_SKILL: str = "rn-ticket-delivery"
+    CLAUDE_DESIGN_URL: str = "https://claude.ai"
+    # Terminal for "Open in Claude Code"; "{cmd}" is replaced by the shell command,
+    # e.g. "gnome-terminal -- bash -lc {cmd}". Blank = Terminal.app on macOS, x-terminal-emulator on Linux.
+    DELIVERY_TERMINAL_CMD: Optional[str] = None
+    # Local clone used when a project isn't in DELIVERY_REPO_MAP; GitHub repo falls back to GITHUB_OWNER/GITHUB_REPO.
+    DELIVERY_REPO_PATH: Optional[str] = None
+    # JSON per Jira project: {"RNMS": {"path": "/code/app", "owner": "uktech", "repo": "app", "sit_branch": "sit", "main_branch": "main"}}
+    DELIVERY_REPO_MAP: str = ""
+    # Prompts and background-run output are written here (relative to backend/).
+    DELIVERY_DATA_DIR: str = "delivery_data"
+    # Post "<stage> checklist complete" to the Code Red - Internal Cliq channel. Off by default.
+    DELIVERY_CLIQ_NOTIFY: bool = False
+
     # General configuration
     APP_ENV: str = "development"
     LOG_LEVEL: str = "INFO"

@@ -30,6 +30,13 @@ Every integration runs in one of two modes automatically: **live** (real API cal
 - **Tag Sync Watcher** — poll Octopus for a SIT tag to finish syncing from GitHub, then auto-deploy it to SIT the moment it lands, with a native desktop notification when it's done.
 - **Tag Promotion Watcher** — poll for a release tag, deploy it to SIT-β, then auto-promote to Pre-Prod once SIT-β succeeds (fast-polls SIT-β completion so it doesn't sit waiting on a slow interval).
 
+### Ticket Delivery
+- **Ticket Delivery** (JIRA Integration → Ticket Delivery, `/jira/ticket-delivery`) — your **current and next sprint** tickets, each with six stage buttons: Understand, Design, Develop + Unit Tests, Test, Deliver: SIT and Deliver: Production.
+- Every stage hands off to Claude with the `rn-ticket-delivery` skill for that phase: **Open in Claude Code** opens a terminal in the ticket's local repo with a prompt built from the Jira ticket and the stage checklist. Understand can also **Run in background** (`claude -p`, plan mode) and show the result on the page. Test runs with `--chrome` (Claude in Chrome); Design links to Claude Design.
+- The delivery stages reuse this portal's own features in place: open PRs that mention the ticket key (Request approval / Notify reviewer), **Suggest / Create tag** for SIT or main, and **Push to QA**.
+- Each stage has a checklist, saved per ticket in SQLite. A **Setup checklist** drawer shows live access checks (Jira, GitHub, Cliq, Claude CLI, repo) and the one-time access checklist. The full list is in [CHECKLIST.md](CHECKLIST.md), generated from `backend/app/core/delivery_checklist.py`.
+- Configure it with the `DELIVERY_*` and `CLAUDE_*` keys in `.env.example`. Without Jira credentials it runs against the simulated tickets like every other page.
+
 ### ITSM
 - **ITSM Ticket Hub** — recent tickets with inline approve/comment.
 - **Raise ITSM Request** — dynamic category form with file attachments.
@@ -124,6 +131,16 @@ npm run dev
 ```
 
 Then open **http://localhost:5173**.
+
+---
+
+## Tests
+
+```bash
+backend/venv/bin/pip install -r backend/requirements-dev.txt
+cd backend && venv/bin/python -m pytest          # Ticket Delivery backend tests
+venv/bin/python -m scripts.generate_checklist    # regenerate CHECKLIST.md after editing the checklist
+```
 
 ---
 

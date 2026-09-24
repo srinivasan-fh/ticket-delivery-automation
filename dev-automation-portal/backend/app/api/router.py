@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from app.core.config import settings
-from app.api import jira, github, devops, crm, itsm, logs, release_ticket, tag_watcher, tag_promotion, team_contacts
+from app.api import jira, github, devops, crm, itsm, logs, release_ticket, tag_watcher, tag_promotion, team_contacts, ticket_delivery
 
 router = APIRouter(prefix="/api")
 
@@ -18,6 +18,7 @@ router.include_router(release_ticket.router)
 router.include_router(tag_watcher.router)
 router.include_router(tag_promotion.router)
 router.include_router(team_contacts.router)
+router.include_router(ticket_delivery.router)
 
 # Settings Schema
 class SettingsUpdatePayload(BaseModel):

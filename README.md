@@ -1,5 +1,7 @@
 # Ticket Delivery Automation
 
+> **Ticket Delivery now lives in the Dev Automation Portal** — see [`dev-automation-portal/`](dev-automation-portal/) (JIRA Integration → Ticket Delivery). It reuses the portal's Jira, GitHub, Cliq and Push to QA code directly. The standalone Node.js dashboard below still works and is kept for reference.
+
 A local dashboard that lists your **current and next sprint** Jira tickets and gives each one action buttons for every delivery stage. Each stage hands off to the right Claude surface, which runs the team's `rn-ticket-delivery` skill for that phase. Tags, PR reviews and Push to QA go through the [Dev Automation Portal](https://github.com/anboli-foodhub/dev-automation-portal).
 
 ```

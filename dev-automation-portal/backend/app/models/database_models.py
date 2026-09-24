@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Float, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, Text, Float, Boolean, DateTime, UniqueConstraint
 from datetime import datetime
 from app.core.database import Base
 
@@ -180,3 +180,16 @@ class TagPromotionWatcher(Base):
     found_at = Column(DateTime, nullable=True)
     sit_beta_completed_at = Column(DateTime, nullable=True)
     resolved_at = Column(DateTime, nullable=True)
+
+
+# Ticket Delivery checklist progress - one row per ticked item. Setup/access items use
+# ticket_key "__setup__" and stage "access" (see app/services/ticket_delivery_service.py).
+class DeliveryCheck(Base):
+    __tablename__ = "delivery_checks"
+    __table_args__ = (UniqueConstraint("ticket_key", "stage", "item_id", name="uq_delivery_check"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    ticket_key = Column(String(50), nullable=False, index=True)
+    stage = Column(String(50), nullable=False)
+    item_id = Column(String(50), nullable=False)
+    checked_at = Column(DateTime, default=datetime.utcnow)

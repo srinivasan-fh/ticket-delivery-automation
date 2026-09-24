@@ -20,6 +20,7 @@ import TagSyncWatcher from '../pages/TagSyncWatcher';
 import TagPromotionWatcher from '../pages/TagPromotionWatcher';
 import MonthlyReport from '../pages/MonthlyReport';
 import OpenPRDashboard from '../pages/OpenPRDashboard';
+import TicketDelivery from '../pages/TicketDelivery';
 import { DEFAULT_OCTOPUS_PROJECT_ID } from '../utils/octopusFavorites';
 
 export const AppRoutes: React.FC = () => {
@@ -52,6 +53,9 @@ export const AppRoutes: React.FC = () => {
 
         {/* GitHub Open PR Dashboard */}
         <Route path="github/open-pr" element={<OpenPRDashboard />} />
+
+        {/* Ticket Delivery - sprint tickets, Claude stage hand-offs, checklists, delivery actions */}
+        <Route path="jira/ticket-delivery" element={<TicketDelivery />} />
 
         {/* ITSM ticket hub */}
         <Route path="itsm/tickets" element={<ItsmTicketHub />} />

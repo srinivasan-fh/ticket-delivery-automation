@@ -59,6 +59,15 @@ export const SERVICES: ServiceItem[] = [
     path: '/service/jira-push-to-qa',
   },
 
+  {
+    id: 'jira-ticket-delivery',
+    title: 'Ticket Delivery',
+    description: 'Current and next sprint tickets with Claude hand-offs per stage, checklists, PRs, tags and Push to QA.',
+    category: 'jira',
+    icon: 'Workflow',
+    path: '/jira/ticket-delivery',
+  },
+
   // ITSM
   {
     id: 'itsm-dashboard',

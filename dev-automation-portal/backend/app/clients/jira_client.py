@@ -117,6 +117,10 @@ class JiraClient(BaseAPIClient):
         # customer request, e.g. "Waiting Product Owner Approval" style statuses.
         return await self.get(f"/rest/servicedeskapi/request/{ticket_key}/approval")
 
+    async def get_board_sprints(self, board_id: str, state: str) -> Tuple[int, Any, Optional[str], float]:
+        # Agile API - sprints on a board in a given state ("active" / "future"), oldest first.
+        return await self.get(f"/rest/agile/1.0/board/{board_id}/sprint", params={"state": state})
+
     async def search_issues(self, jql: str, max_results: int = 100, next_page_token: Optional[str] = None, fields: Optional[str] = None) -> Tuple[int, Any, Optional[str], float]:
         # /rest/api/3/search was removed by Atlassian in favor of /search/jql (cursor-paginated via
         # nextPageToken/isLast, no `total` field - callers needing every match must page through it).
