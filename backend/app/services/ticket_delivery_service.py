@@ -211,7 +211,6 @@ class TicketDeliveryService:
         discovered = await asyncio.to_thread(launcher.discover_jira_mcp_servers, settings.CLAUDE_BIN, cwd)
         servers = list(dict.fromkeys(discovered + configured))
         read_only_tools = ["searchJiraIssuesUsingJql", "getAccessibleAtlassianResources", "atlassianUserInfo"]
-        allowed = [f"mcp__{server}__{tool}" for server in servers for tool in read_only_tools]
         prompt = "\n".join([
             "Use your Atlassian (Jira) MCP tools only - searchJiraIssuesUsingJql, and getAccessibleAtlassianResources first if you need the cloudId.",
             f"Run this JQL and return every result (page through if needed): {jql}",
@@ -222,16 +221,27 @@ class TicketDeliveryService:
             'If you could not run the search (tool missing, not allowed, not signed in), reply {"error": "<why>", "tickets": []}.',
             "Only use an empty tickets list with a null error when the search really returned no issues.",
         ])
-        try:
-            envelope = await asyncio.to_thread(
-                launcher.run_claude_print, settings.CLAUDE_BIN, prompt, allowed, cwd, settings.CLAUDE_MCP_TIMEOUT_SECONDS)
-        except RuntimeError as exc:
-            raise DeliveryError(str(exc), 502)
-        if envelope.get("is_error"):
-            raise DeliveryError(f"Claude Code reported an error: {str(envelope.get('result'))[:300]}", 502)
-        reply = str(envelope.get("result") or "")
-        tickets, claude_error = parse_ticket_reply(reply)
-        denied = sorted({str(d.get("tool_name")) for d in (envelope.get("permission_denials") or []) if isinstance(d, dict)})
+        async def ask(server_names: List[str]):
+            allowed = [f"mcp__{server}__{tool}" for server in server_names for tool in read_only_tools]
+            try:
+                envelope = await asyncio.to_thread(
+                    launcher.run_claude_print, settings.CLAUDE_BIN, prompt, allowed, cwd, settings.CLAUDE_MCP_TIMEOUT_SECONDS)
+            except RuntimeError as exc:
+                raise DeliveryError(str(exc), 502)
+            if envelope.get("is_error"):
+                raise DeliveryError(f"Claude Code reported an error: {str(envelope.get('result'))[:300]}", 502)
+            tickets, claude_error = parse_ticket_reply(str(envelope.get("result") or ""))
+            denied = sorted({str(d.get("tool_name")) for d in (envelope.get("permission_denials") or []) if isinstance(d, dict)})
+            return tickets, claude_error, denied
+
+        tickets, claude_error, denied = await ask(servers)
+        # A refused read-only Jira tool names the server exactly (mcp__<server>__<tool>) - allow that
+        # server's read-only tools and ask once more. Write tools are never added this way.
+        retry = [m.group(1) for d in denied if (m := re.match(r"^mcp__(.+)__(\w+)$", d)) and m.group(2) in read_only_tools]
+        retry = [r for r in dict.fromkeys(retry) if r not in servers]
+        if not tickets and retry:
+            servers = servers + retry
+            tickets, claude_error, denied = await ask(servers)
         if not tickets and (denied or claude_error):
             hint = f"Allowed MCP servers: {', '.join(servers) or 'none found'}. Run `claude mcp list` and set CLAUDE_JIRA_MCP_SERVERS in backend/.env to your Atlassian server's name."
             what = f"it was not allowed to use {', '.join(denied)}" if denied else claude_error

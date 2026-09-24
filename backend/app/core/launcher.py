@@ -85,9 +85,9 @@ _MCP_LINE_RE = re.compile(r"^(?P<name>[^:]+?):\s+(?P<target>\S+)")
 
 
 def mcp_tool_prefix(server_name: str) -> str:
-    # Claude Code names MCP tools mcp__<server>__<tool>, with the server name's
-    # characters outside [A-Za-z0-9_-] replaced by "_" ("claude.ai Atlassian" -> "claude_ai_Atlassian").
-    return re.sub(r"[^A-Za-z0-9_-]", "_", server_name.strip())
+    # Claude Code names MCP tools mcp__<server>__<tool>: characters outside [A-Za-z0-9_-] become "_",
+    # repeats collapse and edges are trimmed ("claude.ai Atlassian Rovo (2)" -> "claude_ai_Atlassian_Rovo_2").
+    return re.sub(r"_+", "_", re.sub(r"[^A-Za-z0-9_-]", "_", server_name.strip())).strip("_")
 
 
 def discover_jira_mcp_servers(claude_bin: str, cwd: str, timeout: int = 60) -> List[str]:
