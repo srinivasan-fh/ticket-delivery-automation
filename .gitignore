@@ -1,3 +1,26 @@
-node_modules/
+# Environment files - never commit real credentials
 .env
-.tda/
+.env.*
+!.env.example
+
+# Python
+backend/venv/
+**/__pycache__/
+*.pyc
+
+# Local data - contains real captured API payloads (Jira tickets, Octopus releases, etc.)
+backend/dev_portal.db
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Node
+node_modules/
+frontend/dist/
+
+# OS
+.DS_Store
+
+# Ticket Delivery prompts and background Claude runs
+backend/delivery_data/
+.coverage
+.pytest_cache/

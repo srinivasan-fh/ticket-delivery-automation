@@ -1,31 +1,24 @@
 # Ticket Delivery Checklist
 
-<!-- Generated from src/checklist.js by `npm run checklist`. Edit that file, not this one. -->
+<!-- Generated from backend/app/core/delivery_checklist.py by `python -m scripts.generate_checklist`. Edit that file, not this one. -->
 
-The dashboard shows these same checklists and saves progress per ticket.
+The **Ticket Delivery** page (JIRA Integration → Ticket Delivery) shows these same checklists and saves progress per ticket.
 
 ## 1. One-time setup: access
 
 ### GitHub (repo access)
 
-- [ ] Repository cloned locally and path set in REPO_PATH / REPO_MAP
-- [ ] GitHub CLI signed in (`gh auth login`) with push access to the repo
+- [ ] Repository cloned locally and set in DELIVERY_REPO_PATH / DELIVERY_REPO_MAP
+- [ ] GITHUB_TOKEN set in Settings (live mode, not simulated) with `repo` scope
 - [ ] Branch protection, required reviewers and CODEOWNERS for the repo are known
-- [ ] SIT and production branches set per repo in REPO_MAP (`sitBranch`, `mainBranch`)
-
-### Dev Automation Portal (tags, PR reviews, Push to QA)
-
-- [ ] dev-automation-portal running locally (`./start.sh`) and PORTAL_URL / PORTAL_API_URL set
-- [ ] Portal GITHUB_TOKEN set (live mode, not simulated) with `repo` scope
-- [ ] Portal Team Contacts has QA assignees, PR approval peers and the PR reviewer
-- [ ] Portal Zoho Cliq OAuth (ZOHO_CLIENT_ID / SECRET / REFRESH_TOKEN) set for PR and QA notifications
+- [ ] SIT and main branches set per repo in DELIVERY_REPO_MAP (`sit_branch`, `main_branch`)
 
 ### Jira (ticket access)
 
-- [ ] Atlassian API token created at id.atlassian.com and set in JIRA_API_TOKEN
-- [ ] JIRA_BASE_URL, JIRA_EMAIL, JIRA_PROJECT_KEYS (and ideally JIRA_BOARD_ID) set
+- [ ] JIRA_BASE_URL, JIRA_EMAIL and JIRA_API_TOKEN set in Settings
+- [ ] DELIVERY_JIRA_PROJECT_KEYS (and ideally DELIVERY_JIRA_BOARD_ID) set
 - [ ] You can see the current and next sprint on the board
-- [ ] Atlassian MCP connected in Claude Code so the skill can comment and attach evidence
+- [ ] Atlassian MCP connected in Claude Code (stages read the full ticket and add evidence through it)
 
 ### Claude (code and everything else)
 
@@ -37,7 +30,8 @@ The dashboard shows these same checklists and saves progress per ticket.
 
 ### Zoho (communication)
 
-- [ ] Optional: Zoho Cliq incoming webhook set in ZOHO_CLIQ_WEBHOOK_URL for stage-done updates
+- [ ] Zoho Cliq OAuth (ZOHO_CLIENT_ID / SECRET / REFRESH_TOKEN) set for PR and QA notifications
+- [ ] Team Contacts has QA assignees, PR approval peers and the PR reviewer
 - [ ] Zoho WorkDrive folder available for walkthrough videos
 
 ## 2. Per-ticket delivery
@@ -62,7 +56,7 @@ The dashboard shows these same checklists and saves progress per ticket.
 
 ### 2.3 Develop + Unit Tests (Claude Code)
 
-- [ ] Feature branch created from the correct base using the naming convention
+- [ ] Feature branch created from the correct base (portal: Create Branch)
 - [ ] Existing components, hooks and Redux/saga architecture reused, nothing duplicated
 - [ ] No hardcoded values (strings, colours, sizes, URLs); constants and tokens only
 - [ ] KISS: smallest change that meets every acceptance criterion
@@ -85,19 +79,19 @@ The dashboard shows these same checklists and saves progress per ticket.
 
 - [ ] PR opened using the team template, ticket key in the title or branch
 - [ ] CI green on the PR head
-- [ ] Approval requested from peers (portal: Request approval, notifies on Cliq)
-- [ ] Reviewer notified and all review comments resolved (portal: Notify reviewer)
+- [ ] Approval requested from peers (Request approval, notifies on Cliq)
+- [ ] Reviewer notified and all review comments resolved (Notify reviewer)
 - [ ] Required approvals received and PR merged to the SIT branch
-- [ ] SIT tag created from the SIT branch (portal suggests the next tag)
+- [ ] SIT tag created from the SIT branch (Suggest picks the next tag)
 - [ ] Per-AC evidence and video link added to the Jira ticket
-- [ ] Pushed to QA for SIT (portal: Push to QA transitions, reassigns and notifies)
+- [ ] Pushed to QA for SIT (Push to QA moves, reassigns and notifies)
 
 ### 2.6 Deliver: Production (Dev Automation Portal)
 
 - [ ] QA passed on SIT / Pre-Prod and PO accepted
 - [ ] Release Management ticket raised (portal: Release Ticket)
 - [ ] Release PR to the main branch approved and merged
-- [ ] Production tag created from the main branch (portal suggests the next tag)
+- [ ] Production tag created from the main branch (Suggest picks the next tag)
 - [ ] Production smoke test done
 - [ ] Ticket moved to Done with release notes / fix version
 - [ ] Release announced in the Zoho Cliq channel
