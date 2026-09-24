@@ -104,7 +104,7 @@ export const ReleaseTicketForm: React.FC = () => {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <Box>
         <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 1 }}>
-          <Link component={RouterLink} to="/" underline="hover" color="inherit">Dashboard</Link>
+          <Link component={RouterLink} to="/dashboard" underline="hover" color="inherit">Dashboard</Link>
           <Link component={RouterLink} to="/itsm/release-ticket" underline="hover" color="inherit">Release Ticket</Link>
           <Typography color="text.primary">{repoConfig.label}</Typography>
         </Breadcrumbs>

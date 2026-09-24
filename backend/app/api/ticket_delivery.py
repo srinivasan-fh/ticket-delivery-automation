@@ -40,6 +40,15 @@ async def get_sprint_tickets(sprint: Literal["current", "next"] = "current", db:
         _raise(exc)
 
 
+@router.post("/mcp-tickets", dependencies=[Depends(require_local_host)])
+async def get_mcp_tickets(sprint: Literal["current", "next"] = "current", db: Session = Depends(get_db)):
+    # Runs Claude Code on this machine, which lists the tickets through its Atlassian MCP.
+    try:
+        return await TicketDeliveryService(db).get_mcp_tickets(sprint)
+    except DeliveryError as exc:
+        _raise(exc)
+
+
 @router.get("/checks")
 async def get_checks(keys: str = Query("", description="Comma-separated ticket keys"), db: Session = Depends(get_db)):
     return TicketDeliveryService(db).get_checks([k for k in keys.split(",") if k])

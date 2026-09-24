@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import re
@@ -64,6 +65,35 @@ def repo_for(ticket_key: str) -> Dict[str, Optional[str]]:
         "sit_branch": entry.get("sit_branch") or "sit",
         "main_branch": entry.get("main_branch") or "main",
     }
+
+
+def parse_ticket_list(text: str) -> List[Dict[str, Any]]:
+    """Pull the JSON array out of Claude's reply and keep only well-formed tickets."""
+    start, end = text.find("["), text.rfind("]")
+    if start == -1 or end < start:
+        raise DeliveryError(f"Claude Code did not return a ticket list: {text[:200]}", 502)
+    try:
+        items = json.loads(text[start:end + 1])
+    except ValueError:
+        raise DeliveryError("Claude Code returned a ticket list that is not valid JSON", 502)
+    tickets = []
+    for item in items if isinstance(items, list) else []:
+        if not isinstance(item, dict) or not TICKET_KEY_RE.match(str(item.get("key", ""))):
+            continue
+        points = item.get("story_points")
+        url = str(item.get("url") or "")
+        tickets.append({
+            "key": str(item["key"]),
+            "summary": str(item.get("summary") or ""),
+            "status": str(item.get("status") or ""),
+            "type": str(item.get("type") or ""),
+            "priority": str(item.get("priority") or ""),
+            "assignee": str(item.get("assignee") or ""),
+            "story_points": points if isinstance(points, (int, float)) and not isinstance(points, bool) else None,
+            "sprint": str(item.get("sprint") or ""),
+            "url": url if url.startswith("https://") else None,
+        })
+    return tickets
 
 
 def require_ticket_key(key: str) -> str:
@@ -151,6 +181,34 @@ class TicketDeliveryService:
             "story_points": t.story_points, "sprint": t.sprint, "url": None,
         } for t in rows]
         return {"source": "simulated", "jql": f'sprint = "{SIM_SPRINTS[which]}" (simulated)', "tickets": tickets, "execution_time_ms": (time.perf_counter() - start_time) * 1000}
+
+    # ---------- sprint tickets via Claude Code's Atlassian MCP (My Tickets page) ----------
+    async def get_mcp_tickets(self, which: Literal["current", "next"]) -> Dict[str, Any]:
+        start_time = time.perf_counter()
+        clause = "sprint in futureSprints()" if which == "next" else "sprint in openSprints()"
+        jql = build_jql(project_keys(), clause, settings.DELIVERY_ONLY_MINE)
+        servers = [s.strip() for s in settings.CLAUDE_JIRA_MCP_SERVERS.split(",") if s.strip()]
+        read_only_tools = ["searchJiraIssuesUsingJql", "getAccessibleAtlassianResources", "atlassianUserInfo"]
+        allowed = [f"mcp__{server}__{tool}" for server in servers for tool in read_only_tools]
+        prompt = "\n".join([
+            "Use your Atlassian (Jira) MCP tools only - searchJiraIssuesUsingJql, and getAccessibleAtlassianResources if you need the cloudId.",
+            f"Run this JQL: {jql}",
+            f"Request the fields summary, status, issuetype, priority, assignee, {settings.DELIVERY_SPRINT_FIELD}, {settings.DELIVERY_STORY_POINTS_FIELD}.",
+            "Reply with ONLY a JSON array and nothing else. One object per issue:",
+            '{"key": "...", "summary": "...", "status": "...", "type": "...", "priority": "...", "assignee": "...", '
+            '"story_points": number or null, "sprint": "...", "url": "https://<site>/browse/<key>"}',
+            "If there are no issues, reply [].",
+        ])
+        cwd = settings.DELIVERY_REPO_PATH if settings.DELIVERY_REPO_PATH and os.path.isdir(settings.DELIVERY_REPO_PATH) else os.path.expanduser("~")
+        try:
+            envelope = await asyncio.to_thread(
+                launcher.run_claude_print, settings.CLAUDE_BIN, prompt, allowed, cwd, settings.CLAUDE_MCP_TIMEOUT_SECONDS)
+        except RuntimeError as exc:
+            raise DeliveryError(str(exc), 502)
+        if envelope.get("is_error"):
+            raise DeliveryError(f"Claude Code reported an error: {str(envelope.get('result'))[:300]}", 502)
+        tickets = parse_ticket_list(str(envelope.get("result") or ""))
+        return {"source": "claude-mcp", "jql": jql, "tickets": tickets, "execution_time_ms": (time.perf_counter() - start_time) * 1000}
 
     # ---------- checklists ----------
     def get_checks(self, keys: List[str]) -> Dict[str, Any]:
