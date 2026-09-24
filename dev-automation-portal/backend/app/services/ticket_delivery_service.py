@@ -202,10 +202,11 @@ class TicketDeliveryService:
         if not repo["path"]:
             raise DeliveryError("No local repo configured for this ticket (DELIVERY_REPO_PATH / DELIVERY_REPO_MAP)")
 
+        # The brief is a convenience; Claude Code reads the full ticket via the Atlassian MCP,
+        # so a failed lookup (e.g. simulated mode with a real key) must not block the launch.
         res = await JiraService(self.db).get_ticket(ticket_key)
-        if not res["success"]:
-            raise DeliveryError(res["error"], 404)
-        prompt = build_prompt(stage, res["data"], settings.CLAUDE_SKILL)
+        ticket = res["data"] if res["success"] and isinstance(res.get("data"), dict) else {"key": ticket_key}
+        prompt = build_prompt(stage, {**ticket, "key": ticket_key}, settings.CLAUDE_SKILL)
         prompt_file = os.path.join(data_dir("prompts"), f"{ticket_key}-{stage_id}.md")
         with open(prompt_file, "w", encoding="utf-8") as f:
             f.write(prompt)

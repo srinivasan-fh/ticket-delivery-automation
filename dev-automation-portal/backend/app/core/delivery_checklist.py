@@ -20,7 +20,7 @@ ACCESS_CHECKLIST: List[Dict] = [
             {"id": "jira-token", "text": "JIRA_BASE_URL, JIRA_EMAIL and JIRA_API_TOKEN set in Settings"},
             {"id": "jira-scope", "text": "DELIVERY_JIRA_PROJECT_KEYS (and ideally DELIVERY_JIRA_BOARD_ID) set"},
             {"id": "jira-board", "text": "You can see the current and next sprint on the board"},
-            {"id": "jira-mcp", "text": "Atlassian MCP connected in Claude Code so the skill can comment and attach evidence"},
+            {"id": "jira-mcp", "text": "Atlassian MCP connected in Claude Code (stages read the full ticket and add evidence through it)"},
         ],
     },
     {

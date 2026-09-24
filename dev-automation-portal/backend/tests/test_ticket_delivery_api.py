@@ -126,7 +126,10 @@ def test_stage_launch_run_and_prompt(client, delivery_settings, monkeypatch):
 
     assert client.post(url + "zzz", json={"mode": "prompt"}).status_code == 404
     assert client.post(url + "develop", json={"mode": "rm"}).status_code == 422
-    assert client.post("/api/ticket-delivery/tickets/RNMS-99999/stages/develop", json={"mode": "prompt"}).status_code == 404
+    unknown = client.post("/api/ticket-delivery/tickets/RNMS-99999/stages/develop", json={"mode": "prompt"})
+    assert unknown.status_code == 200
+    unknown_prompt = open(unknown.json()["prompt_file"]).read()
+    assert "Read RNMS-99999 from Jira with the Atlassian MCP first" in unknown_prompt and "Ticket brief" not in unknown_prompt
     assert client.get("/api/ticket-delivery/tickets/RNMS-1/stages/zzz/output").status_code == 404
 
     monkeypatch.setattr(svc.sys, "platform", "win32")
