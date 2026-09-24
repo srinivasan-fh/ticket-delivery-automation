@@ -1,0 +1,21 @@
+# Environment files - never commit real credentials
+.env
+.env.*
+!.env.example
+
+# Python
+backend/venv/
+**/__pycache__/
+*.pyc
+
+# Local data - contains real captured API payloads (Jira tickets, Octopus releases, etc.)
+backend/dev_portal.db
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Node
+node_modules/
+frontend/dist/
+
+# OS
+.DS_Store
