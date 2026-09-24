@@ -110,7 +110,7 @@ chmod +x start.sh
 ./start.sh
 ```
 
-This creates the backend virtualenv, installs both backend and frontend dependencies, and starts both dev servers concurrently. After that, `npm run dev` is enough — it runs the same setup first (`scripts/setup.sh`), so a missing or broken `backend/venv` or missing packages are fixed automatically.
+This creates the backend virtualenv, installs both backend and frontend dependencies, and starts both dev servers concurrently. After that, `npm run dev` is enough — it runs the same setup first (`scripts/setup.sh`), so a missing or broken `backend/venv` or missing packages are fixed automatically. Leave it running: `git pull` and edits to `backend/.env` reload the backend, and the frontend hot-reloads. Restart only when `requirements.txt` or a `package.json` changes.
 
 - Frontend: **http://localhost:5173**
 - Backend API: **http://127.0.0.1:8000** (proxied through the frontend at `/api`)
