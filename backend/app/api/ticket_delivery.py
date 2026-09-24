@@ -29,7 +29,7 @@ async def get_config(db: Session = Depends(get_db)):
 
 @router.get("/health")
 async def get_health(db: Session = Depends(get_db)):
-    return TicketDeliveryService(db).health()
+    return await TicketDeliveryService(db).health()
 
 
 @router.get("/tickets")

@@ -1,6 +1,7 @@
 import os
 import re
 from typing import Dict, List, Optional
+from app.core.config import is_placeholder
 
 # Same path convention as the generic /settings endpoint in app/api/router.py.
 _ENV_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".env")
@@ -36,7 +37,7 @@ def get_numbered_contacts(prefix: str) -> List[Dict[str, str]]:
     for n in numbers:
         name = env.get(f"{prefix}_{n}_NAME", "").strip()
         email = env.get(f"{prefix}_{n}_EMAIL", "").strip()
-        if name and email:
+        if name and email and not is_placeholder(email):
             contacts.append({"name": name, "email": email})
     return contacts
 
@@ -45,7 +46,7 @@ def get_single_contact(prefix: str) -> Optional[Dict[str, str]]:
     env = _parse_env(_read_env_lines())
     name = env.get(f"{prefix}_NAME", "").strip()
     email = env.get(f"{prefix}_EMAIL", "").strip()
-    return {"name": name, "email": email} if name and email else None
+    return {"name": name, "email": email} if name and email and not is_placeholder(email) else None
 
 
 def write_numbered_contacts(prefix: str, contacts: List[Dict[str, str]]) -> None:

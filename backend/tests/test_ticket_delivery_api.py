@@ -9,7 +9,8 @@ def test_config_and_health(client, delivery_settings, monkeypatch):
     assert len(cfg["stages"]) == 6 and cfg["skill"] == "rn-ticket-delivery"
     monkeypatch.setattr(launcher, "run_version", lambda b: {"ok": True, "detail": "2.0.0 (Claude Code)"})
     health = client.get("/api/ticket-delivery/health").json()
-    assert health["jira"]["ok"] is False and health["claude"]["detail"] == "2.0.0 (Claude Code)"
+    assert health["jira"]["ok"] is False and "Simulated" in health["jira"]["detail"]
+    assert health["github"]["ok"] is False and health["claude"]["detail"] == "2.0.0 (Claude Code)"
     assert health["repo default"]["ok"] is True
     monkeypatch.setattr(settings, "DELIVERY_JIRA_PROJECT_KEYS", "bad key")
     assert client.get("/api/ticket-delivery/health").json()["projects"]["ok"] is False
@@ -155,3 +156,32 @@ def test_launch_rejects_non_local_host(client):
 def test_ticket_repo(client, delivery_settings):
     assert client.get("/api/ticket-delivery/tickets/RNMS-1/repo").json()["repo"] == "app"
     assert client.get("/api/ticket-delivery/tickets/bad/repo").status_code == 400
+
+
+def test_health_verifies_live_credentials(client, delivery_settings, monkeypatch):
+    from app.clients.github_client import GithubClient
+    monkeypatch.setattr(launcher, "run_version", lambda b: {"ok": True, "detail": "x"})
+    monkeypatch.setattr(settings, "JIRA_BASE_URL", "https://j.atlassian.net")
+    monkeypatch.setattr(settings, "JIRA_API_TOKEN", "t")
+    monkeypatch.setattr(settings, "GITHUB_TOKEN", "g")
+
+    async def me_ok(self):
+        return 200, {"displayName": "Srinivasan"}, None, 1.0
+
+    async def gh_ok(self):
+        return 200, {"login": "srinivasan-fh"}, None, 1.0
+
+    monkeypatch.setattr(JiraClient, "get_myself", me_ok)
+    monkeypatch.setattr(GithubClient, "get_authenticated_user", gh_ok)
+    health = client.get("/api/ticket-delivery/health").json()
+    assert health["jira"] == {"ok": True, "detail": "Live - signed in as Srinivasan"}
+    assert health["github"] == {"ok": True, "detail": "Live - signed in as srinivasan-fh"}
+
+    async def unauthorized(self):
+        return 401, {"message": "Bad credentials"}, "HTTP Error 401: Bad credentials", 1.0
+
+    monkeypatch.setattr(JiraClient, "get_myself", unauthorized)
+    monkeypatch.setattr(GithubClient, "get_authenticated_user", unauthorized)
+    health = client.get("/api/ticket-delivery/health").json()
+    assert health["jira"]["ok"] is False and "not working: HTTP Error 401" in health["jira"]["detail"]
+    assert health["github"]["ok"] is False and "Bad credentials" in health["github"]["detail"]

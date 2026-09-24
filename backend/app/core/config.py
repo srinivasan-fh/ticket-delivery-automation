@@ -1,6 +1,17 @@
 import os
+import re
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
+
+# Example values from .env.example ("your-jira-api-token", "you@yourdomain.com", "/path/to/...").
+# start.sh copies .env.example to backend/.env on first run; without this, those placeholders
+# count as real credentials and every integration goes "live" against hosts that don't exist.
+_PLACEHOLDER_RE = re.compile(r"your[-_]|yourdomain|your-domain|^/path/to/", re.IGNORECASE)
+
+
+def is_placeholder(value: Optional[str]) -> bool:
+    return bool(value) and bool(_PLACEHOLDER_RE.search(value))
 
 class Settings(BaseSettings):
     # API configuration
@@ -83,6 +94,13 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore"
     )
+
+    @model_validator(mode="after")
+    def _drop_placeholders(self):
+        for name, value in list(self.__dict__.items()):
+            if isinstance(value, str) and is_placeholder(value):
+                setattr(self, name, self.model_fields[name].default)
+        return self
 
     @property
     def jira_configured(self) -> bool:
