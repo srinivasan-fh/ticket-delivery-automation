@@ -86,6 +86,7 @@ def test_blocked_jira_tool_is_an_error_not_an_empty_list(client, monkeypatch, tm
 
 def test_discover_and_prefix():
     assert launcher.mcp_tool_prefix("claude.ai Atlassian Rovo") == "claude_ai_Atlassian_Rovo"
+    assert launcher.mcp_tool_prefix("claude.ai Atlassian Rovo (2)") == "claude_ai_Atlassian_Rovo_2"
     assert launcher.mcp_tool_prefix(" jira-cloud ") == "jira-cloud"
     assert launcher.discover_jira_mcp_servers("/no/such/claude", "/") == []
 
@@ -117,3 +118,31 @@ def test_mcp_tickets_rejects_non_local_host():
     from fastapi.testclient import TestClient
     from app.main import app
     assert TestClient(app, base_url="http://evil.example").post("/api/ticket-delivery/mcp-tickets").status_code == 403
+
+
+def test_retries_once_with_the_server_named_in_the_denial(client, monkeypatch, tmp_path):
+    # The user's case: detection/config didn't produce the exact name (claude_ai_Atlassian_Rovo_2).
+    ok = _envelope(json.dumps({"error": None, "tickets": [{"key": "RNMS-28293", "summary": "Create MS store"}]}))
+    denied = _envelope("[]", permission_denials=[
+        {"tool_name": "mcp__claude_ai_Atlassian_Rovo_2__getAccessibleAtlassianResources"},
+        {"tool_name": "mcp__claude_ai_Atlassian_Rovo_2__searchJiraIssuesUsingJql"},
+        {"tool_name": "mcp__claude_ai_Atlassian_Rovo_2__createJiraIssue"},
+    ])
+    (tmp_path / "ok.txt").write_text(ok)
+    (tmp_path / "denied.txt").write_text(denied)
+    script = tmp_path / "claude"
+    script.write_text(
+        "#!/bin/sh\n"
+        'if [ "$1" = "mcp" ]; then echo "No MCP servers configured."; exit 0; fi\n'
+        f'echo run >> "{tmp_path}/runs.txt"\n'
+        f'printf "%s\\n" "$@" > "{tmp_path}/args.txt"\n'
+        f'case "$*" in *mcp__claude_ai_Atlassian_Rovo_2__searchJiraIssuesUsingJql*) cat "{tmp_path}/ok.txt";; *) cat "{tmp_path}/denied.txt";; esac\n')
+    script.chmod(0o755)
+    monkeypatch.setattr(settings, "CLAUDE_BIN", str(script))
+    monkeypatch.setattr(settings, "CLAUDE_JIRA_MCP_SERVERS", "claude_ai_Atlassian_Rovo")
+    body = client.post("/api/ticket-delivery/mcp-tickets").json()
+    assert [t["key"] for t in body["tickets"]] == ["RNMS-28293"]
+    assert body["mcp_servers"] == ["claude_ai_Atlassian_Rovo", "claude_ai_Atlassian_Rovo_2"]
+    assert (tmp_path / "runs.txt").read_text().count("run") == 2
+    args = (tmp_path / "args.txt").read_text()
+    assert "createJiraIssue" not in args  # write tools are never allowed, even when denied
