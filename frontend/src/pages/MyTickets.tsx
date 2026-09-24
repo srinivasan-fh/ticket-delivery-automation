@@ -113,7 +113,11 @@ export const MyTickets: React.FC = () => {
       {!list && !syncing && (
         <Alert severity="info">No tickets saved for the {sprint} sprint yet. Click <strong>Sync from Jira</strong>.</Alert>
       )}
-      {list && list.tickets.length === 0 && <Alert severity="info">No tickets in the {sprint} sprint.</Alert>}
+      {list && list.tickets.length === 0 && (
+        <Alert severity="info">
+          Jira returned no tickets for: <Box component="code" sx={{ fontSize: 12 }}>{list.jql}</Box>
+        </Alert>
+      )}
 
       {list && list.tickets.length > 0 && (
         <Card variant="outlined">

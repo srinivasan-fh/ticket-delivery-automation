@@ -1,4 +1,5 @@
 import json
+import re
 import shlex
 import subprocess
 import threading
@@ -78,3 +79,26 @@ def run_claude_print(claude_bin: str, prompt: str, allowed_tools: List[str], cwd
     if not isinstance(envelope, dict):
         raise RuntimeError("Claude Code returned an unexpected response")
     return envelope
+
+
+_MCP_LINE_RE = re.compile(r"^(?P<name>[^:]+?):\s+(?P<target>\S+)")
+
+
+def mcp_tool_prefix(server_name: str) -> str:
+    # Claude Code names MCP tools mcp__<server>__<tool>, with the server name's
+    # characters outside [A-Za-z0-9_-] replaced by "_" ("claude.ai Atlassian" -> "claude_ai_Atlassian").
+    return re.sub(r"[^A-Za-z0-9_-]", "_", server_name.strip())
+
+
+def discover_jira_mcp_servers(claude_bin: str, cwd: str, timeout: int = 60) -> List[str]:
+    """Names (as tool prefixes) of Atlassian/Jira servers in `claude mcp list`; [] if it can't tell."""
+    try:
+        proc = subprocess.run([claude_bin, "mcp", "list"], cwd=cwd, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    found = []
+    for line in proc.stdout.splitlines():
+        m = _MCP_LINE_RE.match(line.strip())
+        if m and re.search(r"atlassian|jira", line, re.IGNORECASE):
+            found.append(mcp_tool_prefix(m.group("name")))
+    return found
