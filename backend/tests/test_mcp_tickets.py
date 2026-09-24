@@ -146,3 +146,13 @@ def test_retries_once_with_the_server_named_in_the_denial(client, monkeypatch, t
     assert (tmp_path / "runs.txt").read_text().count("run") == 2
     args = (tmp_path / "args.txt").read_text()
     assert "createJiraIssue" not in args  # write tools are never allowed, even when denied
+
+
+def test_subtasks_are_dropped_from_claude_reply():
+    reply = json.dumps({"error": None, "tickets": [
+        {"key": "RNMS-23793", "summary": "Enable Menu File Upload", "type": "Story"},
+        {"key": "RNMS-23794", "summary": "Development", "type": "Sub-task"},
+        {"key": "RNMS-28321", "summary": "Database Alter Updates", "type": "Subtask"},
+        {"key": "RNMS-28352", "summary": "API Development and Deployments", "type": "Dev Task", "subtask": True},
+    ]})
+    assert [t["key"] for t in parse_ticket_list(reply)] == ["RNMS-23793"]
