@@ -1,0 +1,13 @@
+{
+  "name": "ticket-delivery-automation",
+  "version": "0.1.0",
+  "description": "Local dashboard: Jira sprint tickets -> Claude-driven delivery stages with checklists, tags and Zoho Cliq updates",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=20.12" },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test --experimental-test-coverage \"test/*.test.js\"",
+    "checklist": "node scripts/generate-checklist.js"
+  }
+}
