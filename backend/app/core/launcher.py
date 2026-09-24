@@ -1,3 +1,4 @@
+import json
 import shlex
 import subprocess
 import threading
@@ -57,3 +58,23 @@ def run_version(claude_bin: str) -> Dict[str, object]:
     if proc.returncode != 0:
         return {"ok": False, "detail": first_line(proc.stderr) or f"exit code {proc.returncode}"}
     return {"ok": True, "detail": first_line(proc.stdout)}
+
+
+def run_claude_print(claude_bin: str, prompt: str, allowed_tools: List[str], cwd: str, timeout: int) -> Dict[str, object]:
+    """`claude -p <prompt> --output-format json` restricted to allowed_tools. Returns the parsed
+    result envelope ({"result": str, "is_error": bool, ...}) or raises RuntimeError."""
+    argv = [claude_bin, "-p", prompt, "--output-format", "json", "--allowedTools", ",".join(allowed_tools)]
+    try:
+        proc = subprocess.run(argv, cwd=cwd, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(f"Claude Code did not answer within {timeout}s")
+    except OSError as exc:
+        raise RuntimeError(f"Could not run Claude Code ({claude_bin}): {exc}")
+    try:
+        envelope = json.loads(proc.stdout)
+    except ValueError:
+        detail = first_line(proc.stderr) or first_line(proc.stdout) or f"exit code {proc.returncode}"
+        raise RuntimeError(f"Claude Code failed: {detail}")
+    if not isinstance(envelope, dict):
+        raise RuntimeError("Claude Code returned an unexpected response")
+    return envelope

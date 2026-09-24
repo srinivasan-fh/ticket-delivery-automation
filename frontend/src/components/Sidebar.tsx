@@ -14,7 +14,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onDrawerToggle }) 
   const location = useLocation();
 
   const menuItems = [
-    { text: 'Dashboard', icon: 'Layers', path: '/' },
+    { text: 'My Tickets', icon: 'ListTodo', path: '/' },
+    { text: 'Dashboard', icon: 'Layers', path: '/dashboard' },
     { text: 'JIRA Service', icon: 'Ticket', path: '/category/jira' },
     { text: 'GitHub Ops', icon: 'GitPullRequest', path: '/category/github' },
     { text: 'DevOps & CI/CD', icon: 'Cpu', path: '/category/devops' },

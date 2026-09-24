@@ -111,6 +111,9 @@ export const ticketDeliveryApi = {
   getHealth: () => apiClient.get('/ticket-delivery/health').then(r => r.data),
   getTickets: (sprint: 'current' | 'next') =>
     apiClient.get('/ticket-delivery/tickets', { params: { sprint }, timeout: 60000 }).then(r => r.data),
+  // Claude Code lists the tickets through its Atlassian MCP - slow (tens of seconds).
+  getMcpTickets: (sprint: 'current' | 'next') =>
+    apiClient.post('/ticket-delivery/mcp-tickets', null, { params: { sprint }, timeout: 300000 }).then(r => r.data),
   getChecks: (keys: string[]) =>
     apiClient.get('/ticket-delivery/checks', { params: { keys: keys.join(',') } }).then(r => r.data),
   setCheck: (payload: { ticket_key: string; stage: string; item_id: string; done: boolean }) =>

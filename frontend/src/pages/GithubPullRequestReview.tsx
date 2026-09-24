@@ -228,7 +228,7 @@ export const GithubPullRequestReview: React.FC = () => {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <Box>
         <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 1 }}>
-          <Link component={RouterLink} to="/" underline="hover" color="inherit">Dashboard</Link>
+          <Link component={RouterLink} to="/dashboard" underline="hover" color="inherit">Dashboard</Link>
           <Link component={RouterLink} to="/category/github" underline="hover" color="inherit">github</Link>
           <Typography color="text.primary">Approve Pull Request</Typography>
         </Breadcrumbs>

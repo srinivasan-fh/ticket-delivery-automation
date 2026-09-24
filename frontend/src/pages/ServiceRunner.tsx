@@ -79,7 +79,7 @@ export const ServiceRunner: React.FC = () => {
     return (
       <Box sx={{ p: 4, textAlignment: 'center' }}>
         <Typography variant="h5" color="error">Service not found</Typography>
-        <Button component={RouterLink} to="/" variant="contained" sx={{ mt: 2 }}>Back to Dashboard</Button>
+        <Button component={RouterLink} to="/dashboard" variant="contained" sx={{ mt: 2 }}>Back to Dashboard</Button>
       </Box>
     );
   }
@@ -259,7 +259,7 @@ export const ServiceRunner: React.FC = () => {
       {/* Header and Breadcrumbs */}
       <Box>
         <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 1 }}>
-          <Link component={RouterLink} to="/" underline="hover" color="inherit">
+          <Link component={RouterLink} to="/dashboard" underline="hover" color="inherit">
             Dashboard
           </Link>
           <Link component={RouterLink} to={`/category/${service.category}`} underline="hover" color="inherit" sx={{ textTransform: 'capitalize' }}>

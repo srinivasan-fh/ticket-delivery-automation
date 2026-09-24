@@ -79,6 +79,11 @@ class Settings(BaseSettings):
     DELIVERY_REPO_MAP: str = ""
     # Prompts and background-run output are written here (relative to backend/).
     DELIVERY_DATA_DIR: str = "delivery_data"
+    # My Tickets page: Claude Code (claude -p) lists sprint tickets through its Atlassian MCP.
+    # Comma-separated MCP server names as they appear in your Claude Code config (`claude mcp list`);
+    # only their read-only Jira search tools are allowed.
+    CLAUDE_JIRA_MCP_SERVERS: str = "atlassian,Atlassian,claude_ai_Atlassian,Atlassian_Rovo"
+    CLAUDE_MCP_TIMEOUT_SECONDS: int = 240
     # Post "<stage> checklist complete" to the Code Red - Internal Cliq channel. Off by default.
     DELIVERY_CLIQ_NOTIFY: bool = False
 

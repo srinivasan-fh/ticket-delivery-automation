@@ -32,6 +32,9 @@ Every integration runs in one of two modes automatically: **live** (real API cal
 - **Tag Sync Watcher** — poll Octopus for a SIT tag to finish syncing from GitHub, then auto-deploy it to SIT the moment it lands, with a native desktop notification when it's done.
 - **Tag Promotion Watcher** — poll for a release tag, deploy it to SIT-β, then auto-promote to Pre-Prod once SIT-β succeeds (fast-polls SIT-β completion so it doesn't sit waiting on a slow interval).
 
+### My Tickets (landing page)
+- The home page (`/`) lists your current / next sprint Jira tickets. **Sync from Jira** asks Claude Code (`claude -p`) to fetch them through its Atlassian MCP — no Jira token needed — and saves them in the browser's localStorage. Each ticket has an **Open in Claude Code** menu per delivery stage. The service catalog moved to `/dashboard`.
+
 ### Ticket Delivery
 - **Ticket Delivery** (JIRA Integration → Ticket Delivery, `/jira/ticket-delivery`) — your **current and next sprint** tickets, each with six stage buttons: Understand, Design, Develop + Unit Tests, Test, Deliver: SIT and Deliver: Production.
 - Every stage hands off to Claude with the `rn-ticket-delivery` skill for that phase: **Open in Claude Code** opens a terminal in the ticket's local repo. The prompt tells Claude to read the full ticket through the Atlassian MCP that Claude Code already has, and includes the stage checklist. Understand can also **Run in background** (`claude -p`, plan mode) and show the result on the page. Test runs with `--chrome` (Claude in Chrome); Design links to Claude Design.
