@@ -22,6 +22,7 @@ import MonthlyReport from '../pages/MonthlyReport';
 import OpenPRDashboard from '../pages/OpenPRDashboard';
 import TicketDelivery from '../pages/TicketDelivery';
 import MyTickets from '../pages/MyTickets';
+import TicketDetail from '../pages/TicketDetail';
 import { DEFAULT_OCTOPUS_PROJECT_ID } from '../utils/octopusFavorites';
 
 export const AppRoutes: React.FC = () => {
@@ -31,6 +32,7 @@ export const AppRoutes: React.FC = () => {
         {/* Main Dashboard */}
         <Route index element={<MyTickets />} />
         <Route path="dashboard" element={<Dashboard />} />
+        <Route path="tickets/:key" element={<TicketDetail />} />
         
         {/* Category Specific View */}
         <Route path="category/:catId" element={<Dashboard />} />

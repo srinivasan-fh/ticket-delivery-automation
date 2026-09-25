@@ -138,11 +138,10 @@ export const MyTickets: React.FC = () => {
             <React.Fragment key={t.key}>
               {i > 0 && <Divider />}
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center', px: 2, py: 1.5 }}>
-                <Box sx={{ flex: '1 1 320px', minWidth: 0 }}>
+                <Box component={RouterLink} to={`/tickets/${t.key}`}
+                  sx={{ flex: '1 1 320px', minWidth: 0, color: 'inherit', textDecoration: 'none', borderRadius: 1, '&:hover .ticket-key': { textDecoration: 'underline' } }}>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
-                    {t.url
-                      ? <Link href={t.url} target="_blank" rel="noopener" sx={{ fontWeight: 700 }}>{t.key}</Link>
-                      : <Typography sx={{ fontWeight: 700 }}>{t.key}</Typography>}
+                    <Typography className="ticket-key" sx={{ fontWeight: 700, color: 'primary.main' }}>{t.key}</Typography>
                     {t.status && <Chip size="small" label={t.status} />}
                     {t.priority && <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t.priority}</Typography>}
                     {t.story_points !== null && <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t.story_points} pts</Typography>}
